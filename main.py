@@ -5,6 +5,7 @@ import sys
 import threading
 import time
 import subprocess
+import socket
 
 self_ip = str(subprocess.check_output("ipconfig getifaddr en0", shell=True))[2:-3]
 lan = self_ip.split(".")
@@ -53,8 +54,10 @@ def mitm_callback(pkt):
 	try:
 		#if pkt[0].type == 2054:
 		#	pass
-		if not pkt[0][1].dst == self_ip and not pkt[0][1].src == self_ip:
+		if not pkt[0][1].dst == self_ip and not pkt[0][1].dst == self_ip:
 			pkt.show()
+			print(socket.gethostbyaddr(pkt[0][1].dst))
+			print("******")
 	except Exception as e:
 		pass
 
