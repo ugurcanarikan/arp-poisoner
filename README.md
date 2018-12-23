@@ -15,7 +15,11 @@ After getting the correct version of the code, open a terminal. Go to the direct
 
 If you have another version of python3 as default, you may need to specify it: ` python3.6 main.py `
 
-Then, you will encounter with a menu asking you to choose an option. In order to attack an IP address, first
+Then, you will encounter with a menu asking you to choose an option.
+
+![Menu](/menu.png)
+
+In order to attack an IP address, first
 you have to list the online hosts. Therefore, you have to choose 1 at least once before any attack.
 Selecting option 2 starts a Man-in-the-middle attack to the victim's IP address. (You will be asked to enter the victim IP). Now you can listen
 the network of the victim and get the packets till you give a keyboard interrupt. After the attack ends, a pcap file will be created 
