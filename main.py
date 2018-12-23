@@ -151,7 +151,7 @@ while 1:
 				print(f"[*] Starting network capture. Packet Count: {packet_count}. Filter: {sniff_filter}")
 				packets = sniff(filter=sniff_filter, prn=mitm_callback, iface="en0")
 				#packets = sniff(iface="en0", prn=mitm_callback, filter="tcp")
-				wrpcap(target_ip + "_capture.pcap", packets)
+				wrpcap(target_ip + "_denied.pcap", packets)
 			except KeyboardInterrupt:
 				print("restoring network")
 				restore()
