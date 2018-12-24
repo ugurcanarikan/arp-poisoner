@@ -17,7 +17,9 @@ If you have another version of python3 as default, you may need to specify it: `
 
 Then, you will encounter with a menu asking you to choose an option.
 
-![Menu](/menu.png)
+` 1 get online hosts 
+  2 mitm
+  3 dos `
 
 In order to attack an IP address, first
 you have to list the online hosts. Therefore, you have to choose 1 at least once before any attack.
