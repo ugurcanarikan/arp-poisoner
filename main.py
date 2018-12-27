@@ -201,7 +201,7 @@ while 1:
 			poison_thread.start()
 			#sniff_filter = "ip host " + target_ip
 			print(f"[*] Starting network capture.")
-			packets = sniff(filter="udp", prn=mitm_callback, iface="en0")
+			packets = sniff(prn=mitm_callback, iface="en0")
 			#packets = sniff(iface="en0", prn=mitm_callback, filter="tcp")
 			wrpcap("lan_denied.pcap", packets)
 		except KeyboardInterrupt:
