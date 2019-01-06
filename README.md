@@ -35,6 +35,6 @@ connection. The requested packets will come to you. In the end, those packets ar
 Stopping an attack will restore the network.
 
 
-## Contributers
+## Contributors
 * Uğurcan Arıkan
 * Yaşar Alim Türkmen
